@@ -362,7 +362,7 @@ pub fn SimpleClient(comptime Reader: type, comptime Writer: type) type {
                 const msize_max_data = self.client.msize - (4 + 1 + 2 + 4 + 13); // minus rread header data + a mysterious value
                 const iounit_max_data = if (self.iounit != 0) self.iounit else math.maxInt(u32);
                 const read_size_limit = @min(msize_max_data, iounit_max_data);
-                const count = @min(read_size_limit, @intCast(u32, buffer.len));
+                const count = @min(read_size_limit, @as(u32, @intCast(buffer.len)));
 
                 try self.client.sender.tread(0, self.fid, self.pos, count);
                 const msg = try self.client.receiver.next();
@@ -373,7 +373,7 @@ pub fn SimpleClient(comptime Reader: type, comptime Writer: type) type {
                 }
 
                 const data_size = msg.command.rread.data.len;
-                mem.copy(u8, buffer, msg.command.rread.data);
+                @memcpy(buffer, msg.command.rread.data);
                 self.pos += data_size;
 
                 return data_size;
@@ -504,7 +504,7 @@ pub fn SimpleClient(comptime Reader: type, comptime Writer: type) type {
                 const msize_max_data = self.client.msize - (4 + 1 + 2 + 4 + 8 + 4 + 1);
                 const iounit_max_data = if (self.iounit != 0) self.iounit else math.maxInt(u32);
                 const write_size_limit = @min(msize_max_data, iounit_max_data);
-                const count = @min(write_size_limit, @intCast(u32, bytes.len));
+                const count = @min(write_size_limit, @as(u32, @intCast(bytes.len)));
 
                 try self.client.sender.twrite(0, self.fid, self.pos, bytes[0..count]);
                 const msg = try self.client.receiver.next();
@@ -785,12 +785,12 @@ pub fn MessageReceiver(comptime Reader: type) type {
 
         pub fn next(self: Self) !Message {
             var counting = io.countingReader(self.reader);
-            const size = try counting.reader().readIntLittle(u32);
+            const size = try counting.reader().readInt(u32, .little);
             var limited = io.limitedReader(counting.reader(), size - 4);
             const internal_reader = limited.reader();
 
-            const command = @intToEnum(Message.CommandEnum, try internal_reader.readByte());
-            const tag = try internal_reader.readIntLittle(u16);
+            const command: Message.CommandEnum = @enumFromInt(try internal_reader.readByte());
+            const tag = try internal_reader.readInt(u16, .little);
 
             var arena = std.heap.ArenaAllocator.init(self.allocator);
             errdefer arena.deinit();
@@ -851,7 +851,7 @@ pub fn MessageReceiver(comptime Reader: type) type {
 }
 
 pub fn parseWireString(allocator: mem.Allocator, reader: anytype) ![]const u8 {
-    const size = try reader.readIntLittle(u16);
+    const size = try reader.readInt(u16, .little);
     const buffer = try allocator.alloc(u8, size);
     const n = try reader.readAll(buffer);
     if (n != size) {
@@ -864,7 +864,7 @@ pub fn dumpWireString(string: []const u8, writer: anytype) !void {
     if (string.len > std.math.maxInt(u16)) {
         return error.StringTooLarge;
     }
-    try writer.writeIntLittle(u16, @intCast(u16, string.len));
+    try writer.writeInt(u16, @intCast(string.len), .little);
     try writer.writeAll(string);
 }
 
@@ -951,9 +951,9 @@ pub const Message = struct {
         if (msg_size > math.maxInt(u32)) {
             return error.MessageTooLarge;
         }
-        try writer.writeIntLittle(u32, @intCast(u32, msg_size));
-        try writer.writeByte(@enumToInt(self.command));
-        try writer.writeIntLittle(u16, self.tag);
+        try writer.writeInt(u32, @intCast(msg_size), .little);
+        try writer.writeByte(@intFromEnum(self.command));
+        try writer.writeInt(u16, self.tag, .little);
         try self.command.dump(writer);
     }
 
@@ -1009,13 +1009,13 @@ pub const Message = struct {
 
             pub fn parse(allocator: mem.Allocator, reader: anytype) !Command {
                 return .{ .tversion = .{
-                    .msize = try reader.readIntLittle(u32),
+                    .msize = try reader.readInt(u32, .little),
                     .version = try parseWireString(allocator, reader),
                 } };
             }
 
             pub fn dump(self: Tversion, writer: anytype) !void {
-                try writer.writeIntLittle(u32, self.msize);
+                try writer.writeInt(u32, self.msize, .little);
                 try dumpWireString(self.version, writer);
             }
         };
@@ -1026,13 +1026,13 @@ pub const Message = struct {
 
             pub fn parse(allocator: mem.Allocator, reader: anytype) !Command {
                 return .{ .rversion = .{
-                    .msize = try reader.readIntLittle(u32),
+                    .msize = try reader.readInt(u32, .little),
                     .version = try parseWireString(allocator, reader),
                 } };
             }
 
             pub fn dump(self: Rversion, writer: anytype) !void {
-                try writer.writeIntLittle(u32, self.msize);
+                try writer.writeInt(u32, self.msize, .little);
                 try dumpWireString(self.version, writer);
             }
         };
@@ -1044,14 +1044,14 @@ pub const Message = struct {
 
             pub fn parse(allocator: mem.Allocator, reader: anytype) !Command {
                 return .{ .tauth = .{
-                    .afid = try reader.readIntLittle(u32),
+                    .afid = try reader.readInt(u32, .little),
                     .uname = try parseWireString(allocator, reader),
                     .aname = try parseWireString(allocator, reader),
                 } };
             }
 
             pub fn dump(self: Tauth, writer: anytype) !void {
-                try writer.writeIntLittle(u32, self.afid);
+                try writer.writeInt(u32, self.afid, .little);
                 try dumpWireString(self.uname, writer);
                 try dumpWireString(self.aname, writer);
             }
@@ -1079,16 +1079,16 @@ pub const Message = struct {
 
             pub fn parse(allocator: mem.Allocator, reader: anytype) !Command {
                 return .{ .tattach = .{
-                    .fid = try reader.readIntLittle(u32),
-                    .afid = try reader.readIntLittle(u32),
+                    .fid = try reader.readInt(u32, .little),
+                    .afid = try reader.readInt(u32, .little),
                     .uname = try parseWireString(allocator, reader),
                     .aname = try parseWireString(allocator, reader),
                 } };
             }
 
             pub fn dump(self: Tattach, writer: anytype) !void {
-                try writer.writeIntLittle(u32, self.fid);
-                try writer.writeIntLittle(u32, self.afid);
+                try writer.writeInt(u32, self.fid, .little);
+                try writer.writeInt(u32, self.afid, .little);
                 try dumpWireString(self.uname, writer);
                 try dumpWireString(self.aname, writer);
             }
@@ -1127,12 +1127,12 @@ pub const Message = struct {
 
             pub fn parse(reader: anytype) !Command {
                 return .{ .tflush = .{
-                    .oldtag = try reader.readIntLittle(u16),
+                    .oldtag = try reader.readInt(u16, .little),
                 } };
             }
 
             pub fn dump(self: Tflush, writer: anytype) !void {
-                try writer.writeIntLittle(u16, self.oldtag);
+                try writer.writeInt(u16, self.oldtag, .little);
             }
         };
 
@@ -1144,9 +1144,9 @@ pub const Message = struct {
             pub fn parse(allocator: mem.Allocator, reader: anytype) !Command {
                 var wnames = std.ArrayList([]const u8).init(allocator);
                 // would errdefer if not using arena
-                const fid = try reader.readIntLittle(u32);
-                const newfid = try reader.readIntLittle(u32);
-                const nwname = try reader.readIntLittle(u16);
+                const fid = try reader.readInt(u32, .little);
+                const newfid = try reader.readInt(u32, .little);
+                const nwname = try reader.readInt(u16, .little);
                 for (0..nwname) |_| {
                     const name = try parseWireString(allocator, reader);
                     try wnames.append(name);
@@ -1160,9 +1160,9 @@ pub const Message = struct {
             }
 
             pub fn dump(self: Twalk, writer: anytype) !void {
-                try writer.writeIntLittle(u32, self.fid);
-                try writer.writeIntLittle(u32, self.newfid);
-                try writer.writeIntLittle(u16, @intCast(u16, self.wname.len));
+                try writer.writeInt(u32, self.fid, .little);
+                try writer.writeInt(u32, self.newfid, .little);
+                try writer.writeInt(u16, @intCast(self.wname.len), .little);
                 for (self.wname) |name| {
                     try dumpWireString(name, writer);
                 }
@@ -1175,7 +1175,7 @@ pub const Message = struct {
             pub fn parse(allocator: mem.Allocator, reader: anytype) !Command {
                 var qids = std.ArrayList(Qid).init(allocator);
 
-                const nwqid = try reader.readIntLittle(u16);
+                const nwqid = try reader.readInt(u16, .little);
                 for (0..nwqid) |_| {
                     const qid = try Qid.parse(reader);
                     try qids.append(qid);
@@ -1187,7 +1187,7 @@ pub const Message = struct {
             }
 
             pub fn dump(self: Rwalk, writer: anytype) !void {
-                try writer.writeIntLittle(u16, @intCast(u16, self.wqid.len));
+                try writer.writeInt(u16, @intCast(self.wqid.len), .little);
                 for (self.wqid) |qid| {
                     try qid.dump(writer);
                 }
@@ -1199,8 +1199,8 @@ pub const Message = struct {
             mode: OpenMode,
 
             pub fn parse(reader: anytype) !Command {
-                const fid = try reader.readIntLittle(u32);
-                const open_mode = @bitCast(OpenMode, try reader.readByte());
+                const fid = try reader.readInt(u32, .little);
+                const open_mode: OpenMode = @bitCast(try reader.readByte());
 
                 return .{ .topen = .{
                     .fid = fid,
@@ -1209,8 +1209,8 @@ pub const Message = struct {
             }
 
             pub fn dump(self: Topen, writer: anytype) !void {
-                try writer.writeIntLittle(u32, self.fid);
-                try writer.writeByte(@bitCast(u8, self.mode));
+                try writer.writeInt(u32, self.fid, .little);
+                try writer.writeByte(@bitCast(self.mode));
             }
         };
 
@@ -1221,13 +1221,13 @@ pub const Message = struct {
             pub fn parse(reader: anytype) !Command {
                 return .{ .ropen = .{
                     .qid = try Qid.parse(reader),
-                    .iounit = try reader.readIntLittle(u32),
+                    .iounit = try reader.readInt(u32, .little),
                 } };
             }
 
             pub fn dump(self: Ropen, writer: anytype) !void {
                 try self.qid.dump(writer);
-                try writer.writeIntLittle(u32, self.iounit);
+                try writer.writeInt(u32, self.iounit, .little);
             }
         };
 
@@ -1239,18 +1239,18 @@ pub const Message = struct {
 
             pub fn parse(allocator: mem.Allocator, reader: anytype) !Command {
                 return .{ .tcreate = .{
-                    .fid = try reader.readIntLittle(u32),
+                    .fid = try reader.readInt(u32, .little),
                     .name = try parseWireString(allocator, reader),
-                    .perm = @bitCast(DirMode, try reader.readIntLittle(u32)),
-                    .mode = @bitCast(OpenMode, try reader.readByte()),
+                    .perm = @bitCast(try reader.readInt(u32, .little)),
+                    .mode = @bitCast(try reader.readByte()),
                 } };
             }
 
             pub fn dump(self: Tcreate, writer: anytype) !void {
-                try writer.writeIntLittle(u32, self.fid);
+                try writer.writeInt(u32, self.fid, .little);
                 try dumpWireString(self.name, writer);
-                try writer.writeIntLittle(u32, @bitCast(u32, self.perm));
-                try writer.writeByte(@bitCast(u8, self.mode));
+                try writer.writeInt(u32, @bitCast(self.perm), .little);
+                try writer.writeByte(@bitCast(self.mode));
             }
         };
 
@@ -1261,13 +1261,13 @@ pub const Message = struct {
             pub fn parse(reader: anytype) !Command {
                 return .{ .rcreate = .{
                     .qid = try Qid.parse(reader),
-                    .iounit = try reader.readIntLittle(u32),
+                    .iounit = try reader.readInt(u32, .little),
                 } };
             }
 
             pub fn dump(self: Rcreate, writer: anytype) !void {
                 try self.qid.dump(writer);
-                try writer.writeIntLittle(u32, self.iounit);
+                try writer.writeInt(u32, self.iounit, .little);
             }
         };
 
@@ -1278,16 +1278,16 @@ pub const Message = struct {
 
             pub fn parse(reader: anytype) !Command {
                 return .{ .tread = .{
-                    .fid = try reader.readIntLittle(u32),
-                    .offset = try reader.readIntLittle(u64),
-                    .count = try reader.readIntLittle(u32),
+                    .fid = try reader.readInt(u32, .little),
+                    .offset = try reader.readInt(u64, .little),
+                    .count = try reader.readInt(u32, .little),
                 } };
             }
 
             pub fn dump(self: Tread, writer: anytype) !void {
-                try writer.writeIntLittle(u32, self.fid);
-                try writer.writeIntLittle(u64, self.offset);
-                try writer.writeIntLittle(u32, self.count);
+                try writer.writeInt(u32, self.fid, .little);
+                try writer.writeInt(u64, self.offset, .little);
+                try writer.writeInt(u32, self.count, .little);
             }
         };
 
@@ -1298,8 +1298,8 @@ pub const Message = struct {
             // interface for receiving large amounts of data instead
             // of allocating on heap.
             pub fn parse(allocator: mem.Allocator, reader: anytype) !Command {
-                const count = try reader.readIntLittle(u32);
-                var data = try allocator.alloc(u8, count);
+                const count = try reader.readInt(u32, .little);
+                const data = try allocator.alloc(u8, count);
                 const data_size = try reader.readAll(data);
                 if (data_size != count) {
                     return error.IncorrectCount;
@@ -1314,7 +1314,7 @@ pub const Message = struct {
                 if (self.data.len > math.maxInt(u32)) {
                     return error.DataTooLong;
                 }
-                try writer.writeIntLittle(u32, @intCast(u32, self.data.len));
+                try writer.writeInt(u32, @intCast(self.data.len), .little);
                 try writer.writeAll(self.data);
             }
         };
@@ -1325,10 +1325,10 @@ pub const Message = struct {
             data: []const u8,
 
             pub fn parse(allocator: mem.Allocator, reader: anytype) !Command {
-                const fid = try reader.readIntLittle(u32);
-                const offset = try reader.readIntLittle(u64);
-                const count = try reader.readIntLittle(u32);
-                var data = try allocator.alloc(u8, count);
+                const fid = try reader.readInt(u32, .little);
+                const offset = try reader.readInt(u64, .little);
+                const count = try reader.readInt(u32, .little);
+                const data = try allocator.alloc(u8, count);
                 const data_size = try reader.readAll(data);
                 if (data_size != count) {
                     return error.IncorrectCount;
@@ -1346,9 +1346,9 @@ pub const Message = struct {
                     return error.DataTooLong;
                 }
 
-                try writer.writeIntLittle(u32, self.fid);
-                try writer.writeIntLittle(u64, self.offset);
-                try writer.writeIntLittle(u32, @intCast(u32, self.data.len));
+                try writer.writeInt(u32, self.fid, .little);
+                try writer.writeInt(u64, self.offset, .little);
+                try writer.writeInt(u32, @intCast(self.data.len), .little);
                 try writer.writeAll(self.data);
             }
         };
@@ -1358,12 +1358,12 @@ pub const Message = struct {
 
             pub fn parse(reader: anytype) !Command {
                 return .{ .rwrite = .{
-                    .count = try reader.readIntLittle(u32),
+                    .count = try reader.readInt(u32, .little),
                 } };
             }
 
             pub fn dump(self: Rwrite, writer: anytype) !void {
-                try writer.writeIntLittle(u32, self.count);
+                try writer.writeInt(u32, self.count, .little);
             }
         };
 
@@ -1372,12 +1372,12 @@ pub const Message = struct {
 
             pub fn parse(reader: anytype) !Command {
                 return .{ .tclunk = .{
-                    .fid = try reader.readIntLittle(u32),
+                    .fid = try reader.readInt(u32, .little),
                 } };
             }
 
             pub fn dump(self: Tclunk, writer: anytype) !void {
-                try writer.writeIntLittle(u32, self.fid);
+                try writer.writeInt(u32, self.fid, .little);
             }
         };
 
@@ -1386,12 +1386,12 @@ pub const Message = struct {
 
             pub fn parse(reader: anytype) !Command {
                 return .{ .tremove = .{
-                    .fid = try reader.readIntLittle(u32),
+                    .fid = try reader.readInt(u32, .little),
                 } };
             }
 
             pub fn dump(self: Tremove, writer: anytype) !void {
-                try writer.writeIntLittle(u32, self.fid);
+                try writer.writeInt(u32, self.fid, .little);
             }
         };
 
@@ -1400,12 +1400,12 @@ pub const Message = struct {
 
             pub fn parse(reader: anytype) !Command {
                 return .{ .tstat = .{
-                    .fid = try reader.readIntLittle(u32),
+                    .fid = try reader.readInt(u32, .little),
                 } };
             }
 
             pub fn dump(self: Tstat, writer: anytype) !void {
-                try writer.writeIntLittle(u32, self.fid);
+                try writer.writeInt(u32, self.fid, .little);
             }
         };
 
@@ -1429,13 +1429,13 @@ pub const Message = struct {
 
             pub fn parse(allocator: mem.Allocator, reader: anytype) !Command {
                 return .{ .twstat = .{
-                    .fid = try reader.readIntLittle(u32),
+                    .fid = try reader.readInt(u32, .little),
                     .stat = try Stat.parse(allocator, reader),
                 } };
             }
 
             pub fn dump(self: Twstat, writer: anytype) !void {
-                try writer.writeIntLittle(u32, self.fid);
+                try writer.writeInt(u32, self.fid, .little);
                 try self.stat.dump(writer);
             }
         };
@@ -1454,16 +1454,16 @@ const Qid = struct {
 
     pub fn parse(reader: anytype) !Qid {
         return Qid{
-            .path = try reader.readIntLittle(u64),
-            .vers = try reader.readIntLittle(u32),
-            .qtype = @bitCast(QType, try reader.readByte()),
+            .path = try reader.readInt(u64, .little),
+            .vers = try reader.readInt(u32, .little),
+            .qtype = @bitCast(try reader.readByte()),
         };
     }
 
     pub fn dump(self: Qid, writer: anytype) !void {
-        try writer.writeIntLittle(u64, self.path);
-        try writer.writeIntLittle(u32, self.vers);
-        try writer.writeByte(@bitCast(u8, self.qtype));
+        try writer.writeInt(u64, self.path, .little);
+        try writer.writeInt(u32, self.vers, .little);
+        try writer.writeByte(@bitCast(self.qtype));
     }
 
     /// Type of file. Plain files will have nothing set.
@@ -1538,16 +1538,16 @@ const OpenMode = packed struct(u8) {
 };
 
 test "open mode is correct" {
-    try testing.expectEqual(@enumToInt(OpenMode.Values.read), @bitCast(u8, OpenMode{ .perm = .read }));
-    try testing.expectEqual(@enumToInt(OpenMode.Values.write), @bitCast(u8, OpenMode{ .perm = .write }));
-    try testing.expectEqual(@enumToInt(OpenMode.Values.rdwr), @bitCast(u8, OpenMode{ .perm = .rdwr }));
-    try testing.expectEqual(@enumToInt(OpenMode.Values.exec), @bitCast(u8, OpenMode{ .perm = .exec }));
-    try testing.expectEqual(@enumToInt(OpenMode.Values.read), @bitCast(u8, OpenMode{}));
+    try testing.expectEqual(@intFromEnum(OpenMode.Values.read), @bitCast(OpenMode{ .perm = .read }));
+    try testing.expectEqual(@intFromEnum(OpenMode.Values.write), @bitCast(OpenMode{ .perm = .write }));
+    try testing.expectEqual(@intFromEnum(OpenMode.Values.rdwr), @bitCast(OpenMode{ .perm = .rdwr }));
+    try testing.expectEqual(@intFromEnum(OpenMode.Values.exec), @bitCast(OpenMode{ .perm = .exec }));
+    try testing.expectEqual(@intFromEnum(OpenMode.Values.read), @bitCast(OpenMode{}));
 
-    try testing.expectEqual(@enumToInt(OpenMode.Values.trunc), @bitCast(u8, OpenMode{ .trunc = true }));
-    try testing.expectEqual(@enumToInt(OpenMode.Values.cexec), @bitCast(u8, OpenMode{ .cexec = true }));
-    try testing.expectEqual(@enumToInt(OpenMode.Values.rclose), @bitCast(u8, OpenMode{ .rclose = true }));
-    try testing.expectEqual(@enumToInt(OpenMode.Values.direct), @bitCast(u8, OpenMode{ .direct = true }));
+    try testing.expectEqual(@intFromEnum(OpenMode.Values.trunc), @bitCast(OpenMode{ .trunc = true }));
+    try testing.expectEqual(@intFromEnum(OpenMode.Values.cexec), @bitCast(OpenMode{ .cexec = true }));
+    try testing.expectEqual(@intFromEnum(OpenMode.Values.rclose), @bitCast(OpenMode{ .rclose = true }));
+    try testing.expectEqual(@intFromEnum(OpenMode.Values.direct), @bitCast(OpenMode{ .direct = true }));
 }
 
 const DirMode = packed struct(u32) {
@@ -1645,23 +1645,23 @@ const DirMode = packed struct(u32) {
 };
 
 test "bitlengths are good" {
-    try testing.expectEqual(@enumToInt(DirMode.Values.exec), @bitCast(u32, DirMode{ .world_exec = true }));
-    try testing.expectEqual(@enumToInt(DirMode.Values.write), @bitCast(u32, DirMode{ .world_write = true }));
-    try testing.expectEqual(@enumToInt(DirMode.Values.read), @bitCast(u32, DirMode{ .world_read = true }));
+    try testing.expectEqual(@intFromEnum(DirMode.Values.exec), @bitCast(DirMode{ .world_exec = true }));
+    try testing.expectEqual(@intFromEnum(DirMode.Values.write), @bitCast(DirMode{ .world_write = true }));
+    try testing.expectEqual(@intFromEnum(DirMode.Values.read), @bitCast(DirMode{ .world_read = true }));
 
-    try testing.expectEqual(@enumToInt(DirMode.Values.sticky), @bitCast(u32, DirMode{ .sticky = true }));
-    try testing.expectEqual(@enumToInt(DirMode.Values.setgid), @bitCast(u32, DirMode{ .setgid = true }));
-    try testing.expectEqual(@enumToInt(DirMode.Values.setuid), @bitCast(u32, DirMode{ .setuid = true }));
-    try testing.expectEqual(@enumToInt(DirMode.Values.socket), @bitCast(u32, DirMode{ .socket = true }));
-    try testing.expectEqual(@enumToInt(DirMode.Values.namedpipe), @bitCast(u32, DirMode{ .namedpipe = true }));
-    try testing.expectEqual(@enumToInt(DirMode.Values.device), @bitCast(u32, DirMode{ .device = true }));
-    try testing.expectEqual(@enumToInt(DirMode.Values.symlink), @bitCast(u32, DirMode{ .symlink = true }));
-    try testing.expectEqual(@enumToInt(DirMode.Values.tmp), @bitCast(u32, DirMode{ .tmp = true }));
-    try testing.expectEqual(@enumToInt(DirMode.Values.auth), @bitCast(u32, DirMode{ .auth = true }));
-    try testing.expectEqual(@enumToInt(DirMode.Values.mount), @bitCast(u32, DirMode{ .mount = true }));
-    try testing.expectEqual(@enumToInt(DirMode.Values.excl), @bitCast(u32, DirMode{ .excl = true }));
-    try testing.expectEqual(@enumToInt(DirMode.Values.append), @bitCast(u32, DirMode{ .append = true }));
-    try testing.expectEqual(@enumToInt(DirMode.Values.dir), @bitCast(u32, DirMode{ .dir = true }));
+    try testing.expectEqual(@intFromEnum(DirMode.Values.sticky), @bitCast(DirMode{ .sticky = true }));
+    try testing.expectEqual(@intFromEnum(DirMode.Values.setgid), @bitCast(DirMode{ .setgid = true }));
+    try testing.expectEqual(@intFromEnum(DirMode.Values.setuid), @bitCast(DirMode{ .setuid = true }));
+    try testing.expectEqual(@intFromEnum(DirMode.Values.socket), @bitCast(DirMode{ .socket = true }));
+    try testing.expectEqual(@intFromEnum(DirMode.Values.namedpipe), @bitCast(DirMode{ .namedpipe = true }));
+    try testing.expectEqual(@intFromEnum(DirMode.Values.device), @bitCast(DirMode{ .device = true }));
+    try testing.expectEqual(@intFromEnum(DirMode.Values.symlink), @bitCast(DirMode{ .symlink = true }));
+    try testing.expectEqual(@intFromEnum(DirMode.Values.tmp), @bitCast(DirMode{ .tmp = true }));
+    try testing.expectEqual(@intFromEnum(DirMode.Values.auth), @bitCast(DirMode{ .auth = true }));
+    try testing.expectEqual(@intFromEnum(DirMode.Values.mount), @bitCast(DirMode{ .mount = true }));
+    try testing.expectEqual(@intFromEnum(DirMode.Values.excl), @bitCast(DirMode{ .excl = true }));
+    try testing.expectEqual(@intFromEnum(DirMode.Values.append), @bitCast(DirMode{ .append = true }));
+    try testing.expectEqual(@intFromEnum(DirMode.Values.dir), @bitCast(DirMode{ .dir = true }));
 }
 
 pub const Stat = struct {
@@ -1711,21 +1711,21 @@ pub const Stat = struct {
     }
 
     pub fn parse(allocator: mem.Allocator, reader: anytype) !Stat {
-        const pkt_size = try reader.readIntLittle(u16);
-        const stype = try reader.readIntLittle(u16);
-        const dev = try reader.readIntLittle(u32);
+        const pkt_size = try reader.readInt(u16, .little);
+        const stype = try reader.readInt(u16, .little);
+        const dev = try reader.readInt(u32, .little);
         const qid_type = try reader.readByte();
-        const qid_vers = try reader.readIntLittle(u32);
-        const qid_path = try reader.readIntLittle(u64);
+        const qid_vers = try reader.readInt(u32, .little);
+        const qid_path = try reader.readInt(u64, .little);
         const qid = Qid{
-            .qtype = @bitCast(Qid.QType, qid_type),
+            .qtype = @bitCast(qid_type),
             .vers = qid_vers,
             .path = qid_path,
         };
-        const mode = @bitCast(DirMode, try reader.readIntLittle(u32));
-        const atime = try reader.readIntLittle(u32);
-        const mtime = try reader.readIntLittle(u32);
-        const length = try reader.readIntLittle(u64);
+        const mode: DirMode = @bitCast(try reader.readInt(u32, .little));
+        const atime = try reader.readInt(u32, .little);
+        const mtime = try reader.readInt(u32, .little);
+        const length = try reader.readInt(u64, .little);
         const name = try parseWireString(allocator, reader);
         const uid = try parseWireString(allocator, reader);
         const gid = try parseWireString(allocator, reader);
@@ -1751,16 +1751,16 @@ pub const Stat = struct {
         if (self.size() > math.maxInt(u16)) {
             return error.StatTooLarge;
         }
-        try writer.writeIntLittle(u16, @intCast(u16, self.size()));
-        try writer.writeIntLittle(u16, self.stype);
-        try writer.writeIntLittle(u32, self.dev);
-        try writer.writeByte(@bitCast(u8, self.qid.qtype));
-        try writer.writeIntLittle(u32, self.qid.vers);
-        try writer.writeIntLittle(u64, self.qid.path);
-        try writer.writeIntLittle(u32, @bitCast(u32, self.mode));
-        try writer.writeIntLittle(u32, self.atime);
-        try writer.writeIntLittle(u32, self.mtime);
-        try writer.writeIntLittle(u64, self.length);
+        try writer.writeInt(u16, @intCast(self.size()), .little);
+        try writer.writeInt(u16, self.stype, .little);
+        try writer.writeInt(u32, self.dev, .little);
+        try writer.writeByte(@bitCast(self.qid.qtype));
+        try writer.writeInt(u32, self.qid.vers, .little);
+        try writer.writeInt(u64, self.qid.path, .little);
+        try writer.writeInt(u32, @bitCast(self.mode), .little);
+        try writer.writeInt(u32, self.atime, .little);
+        try writer.writeInt(u32, self.mtime, .little);
+        try writer.writeInt(u64, self.length, .little);
         try dumpWireString(self.name, writer);
         try dumpWireString(self.uid, writer);
         try dumpWireString(self.gid, writer);
