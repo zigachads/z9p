@@ -21,22 +21,22 @@ pub fn main() !void {
 
     const root = try client.attach(null, "dante", "");
     defer root.clunk() catch unreachable;
-    std.debug.print("root: {any}\n", .{ root });
+    std.debug.print("root: {any}\n", .{root});
 
-    const top_dir = try root.walk(&.{ "" });
-    std.debug.print("top_dir: {any}\n", .{ top_dir });
+    const top_dir = try root.walk(&.{""});
+    std.debug.print("top_dir: {any}\n", .{top_dir});
 
     try top_dir.open(.{});
-    std.debug.print("opened: {any}\n", .{ top_dir });
+    std.debug.print("opened: {any}\n", .{top_dir});
 
     const stat = try top_dir.stat();
     defer stat.deinit();
-    std.debug.print("stat: {any}\n", .{ stat });
-    std.debug.print("size: {d}\n", .{ stat.length });
+    std.debug.print("stat: {any}\n", .{stat});
+    std.debug.print("size: {d}\n", .{stat.length});
 
     const buf = try top_dir.reader().readAllAlloc(allocator, 99999);
     defer allocator.free(buf);
-    std.debug.print("reader: {any}\n", .{ buf });
+    std.debug.print("reader: {any}\n", .{buf});
 
     const files = try top_dir.files();
     defer files.deinit();
@@ -46,7 +46,7 @@ pub fn main() !void {
 
     try top_dir.clunk();
 
-    const tmp = try root.walk(&.{ "tmp" });
+    const tmp = try root.walk(&.{"tmp"});
     try tmp.create("testing", .{ .user_read = true, .user_write = true, .group_read = true, .world_read = true }, .{});
     try tmp.remove();
 
@@ -55,9 +55,9 @@ pub fn main() !void {
     try passwd.open(.{});
     const pass_data = try passwd.reader().readAllAlloc(allocator, 99999);
     defer allocator.free(pass_data);
-    std.debug.print("/etc/passwd:\n{s}\n", .{ pass_data });
+    std.debug.print("/etc/passwd:\n{s}\n", .{pass_data});
 
-    const new_file = try root.walk(&.{ "tmp" });
+    const new_file = try root.walk(&.{"tmp"});
     defer new_file.remove() catch unreachable;
     try new_file.create("new_thing.txt", .{ .user_write = true, .user_read = true }, .{ .perm = .write });
     const tons_of_data = [_]u8{'a'} ** 10000;

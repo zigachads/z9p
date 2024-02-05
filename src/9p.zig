@@ -89,7 +89,7 @@ pub fn Server(comptime Context: type, comptime Reader: type, comptime Writer: ty
                     },
                     else => {
                         try self.sender.rerror(tag, "9p protocol error");
-                    }
+                    },
                 }
 
                 msg_arena.deinit();
@@ -148,7 +148,6 @@ pub fn SimpleClient(comptime Reader: type, comptime Writer: type) type {
 
         // We shouldn't have more than one or two open at a time, a list is fine.
         const HandleList = std.ArrayList(*Handle);
-
 
         pub fn init(allocator: mem.Allocator, reader: Reader, writer: Writer) Self {
             return .{
@@ -310,7 +309,7 @@ pub fn SimpleClient(comptime Reader: type, comptime Writer: type) type {
                 const qid = if (msg.command.rwalk.wqid.len == 0)
                     self.qid
                 else
-                    msg.command.rwalk.wqid[msg.command.rwalk.wqid.len-1];
+                    msg.command.rwalk.wqid[msg.command.rwalk.wqid.len - 1];
 
                 const handle = Handle{
                     .client = self.client,
@@ -380,18 +379,7 @@ pub fn SimpleClient(comptime Reader: type, comptime Writer: type) type {
                 return data_size;
             }
 
-            pub const ReadError = error{
-                UnexpectedMessage,
-                MessageTooLarge,
-                StringTooLarge,
-                DataTooLong,
-                StatTooLarge,
-                Rerror,
-                EndOfStream,
-                IncorrectStringSize,
-                IncorrectCount,
-                NotOpened
-            } || Reader.Error || Writer.Error || mem.Allocator.Error; // @typeInfo(@typeInfo(@TypeOf(read)).Fn.return_type.?).ErrorUnion.error_set;
+            pub const ReadError = error{ UnexpectedMessage, MessageTooLarge, StringTooLarge, DataTooLong, StatTooLarge, Rerror, EndOfStream, IncorrectStringSize, IncorrectCount, NotOpened } || Reader.Error || Writer.Error || mem.Allocator.Error; // @typeInfo(@typeInfo(@TypeOf(read)).Fn.return_type.?).ErrorUnion.error_set;
 
             pub const ClientReader = std.io.Reader(*Handle, ReadError, read);
 
@@ -558,81 +546,51 @@ pub fn MessageSender(comptime Writer: type) type {
         }
 
         pub fn tversion(self: Self, msize: u32, version: []const u8) !void {
-            const msg = Message{
-                .tag = NOTAG,
-                .command = .{
-                    .tversion = .{
-                        .msize = msize,
-                        .version = version,
-                    }
-                }
-            };
+            const msg = Message{ .tag = NOTAG, .command = .{ .tversion = .{
+                .msize = msize,
+                .version = version,
+            } } };
             try msg.dump(self.writer);
         }
 
         pub fn rversion(self: Self, msize: u32, version: []const u8) !void {
-            const msg = Message{
-                .tag = NOTAG,
-                .command = .{
-                    .rversion = .{
-                        .msize = msize,
-                        .version = version,
-                    }
-                }
-            };
+            const msg = Message{ .tag = NOTAG, .command = .{ .rversion = .{
+                .msize = msize,
+                .version = version,
+            } } };
             try msg.dump(self.writer);
         }
 
         pub fn tauth(self: Self, tag: u16, afid: u32, uname: []const u8, aname: []const u8) !void {
-            const msg = Message{
-                .tag = tag,
-                .command = .{
-                    .tauth = .{
-                        .afid = afid,
-                        .uname = uname,
-                        .aname = aname,
-                    }
-                }
-            };
+            const msg = Message{ .tag = tag, .command = .{ .tauth = .{
+                .afid = afid,
+                .uname = uname,
+                .aname = aname,
+            } } };
             try msg.dump(self.writer);
         }
 
         pub fn rauth(self: Self, tag: u16, aqid: Qid) !void {
-            const msg = Message{
-                .tag = tag,
-                .command = .{
-                    .rauth = .{
-                        .aqid = aqid,
-                    }
-                }
-            };
+            const msg = Message{ .tag = tag, .command = .{ .rauth = .{
+                .aqid = aqid,
+            } } };
             try msg.dump(self.writer);
         }
 
         pub fn tattach(self: Self, tag: u16, fid: u32, afid: ?u32, uname: []const u8, aname: []const u8) !void {
-            const msg = Message{
-                .tag = tag,
-                .command = .{
-                    .tattach = .{
-                        .fid = fid,
-                        .afid = if (afid) |a| a else NOFID,
-                        .uname = uname,
-                        .aname = aname,
-                    }
-                }
-            };
+            const msg = Message{ .tag = tag, .command = .{ .tattach = .{
+                .fid = fid,
+                .afid = if (afid) |a| a else NOFID,
+                .uname = uname,
+                .aname = aname,
+            } } };
             try msg.dump(self.writer);
         }
 
         pub fn rattach(self: Self, tag: u16, qid: Qid) !void {
-            const msg = Message{
-                .tag = tag,
-                .command = .{
-                    .rattach = .{
-                        .qid = qid,
-                    }
-                }
-            };
+            const msg = Message{ .tag = tag, .command = .{ .rattach = .{
+                .qid = qid,
+            } } };
             try msg.dump(self.writer);
         }
 
@@ -645,26 +603,16 @@ pub fn MessageSender(comptime Writer: type) type {
         }
 
         pub fn rerror(self: Self, tag: u16, ename: []const u8) !void {
-            const msg = Message{
-                .tag = tag,
-                .command = .{
-                    .rerror = .{
-                        .ename = ename,
-                    }
-                }
-            };
+            const msg = Message{ .tag = tag, .command = .{ .rerror = .{
+                .ename = ename,
+            } } };
             try msg.dump(self.writer);
         }
 
         pub fn tflush(self: Self, tag: u16, oldtag: u16) !void {
-            const msg = Message{
-                .tag = tag,
-                .command = .{
-                    .tflush = .{
-                        .oldtag = oldtag,
-                    }
-                }
-            };
+            const msg = Message{ .tag = tag, .command = .{ .tflush = .{
+                .oldtag = oldtag,
+            } } };
             try msg.dump(self.writer);
         }
 
@@ -677,146 +625,91 @@ pub fn MessageSender(comptime Writer: type) type {
         }
 
         pub fn twalk(self: Self, tag: u16, fid: u32, newfid: u32, wname: []const []const u8) !void {
-            const msg = Message{
-                .tag = tag,
-                .command = .{
-                    .twalk = .{
-                        .fid = fid,
-                        .newfid = newfid,
-                        .wname = wname,
-                    }
-                }
-            };
+            const msg = Message{ .tag = tag, .command = .{ .twalk = .{
+                .fid = fid,
+                .newfid = newfid,
+                .wname = wname,
+            } } };
             try msg.dump(self.writer);
         }
 
         pub fn rwalk(self: Self, tag: u16, wqid: []Qid) !void {
-            const msg = Message{
-                .tag = tag,
-                .command = .{
-                    .rwalk = .{
-                        .wqid = wqid,
-                    }
-                }
-            };
+            const msg = Message{ .tag = tag, .command = .{ .rwalk = .{
+                .wqid = wqid,
+            } } };
             try msg.dump(self.writer);
         }
 
         pub fn topen(self: Self, tag: u16, fid: u32, mode: OpenMode) !void {
-            const msg = Message{
-                .tag = tag,
-                .command = .{
-                    .topen = .{
-                        .fid = fid,
-                        .mode = mode,
-                    }
-                }
-            };
+            const msg = Message{ .tag = tag, .command = .{ .topen = .{
+                .fid = fid,
+                .mode = mode,
+            } } };
             try msg.dump(self.writer);
         }
 
         pub fn ropen(self: Self, tag: u16, qid: Qid, iounit: u32) !void {
-            const msg = Message{
-                .tag = tag,
-                .command = .{
-                    .ropen = .{
-                        .qid = qid,
-                        .iounit = iounit,
-                    }
-                }
-            };
+            const msg = Message{ .tag = tag, .command = .{ .ropen = .{
+                .qid = qid,
+                .iounit = iounit,
+            } } };
             try msg.dump(self.writer);
         }
 
         pub fn tcreate(self: Self, tag: u16, fid: u32, name: []const u8, perm: DirMode, mode: OpenMode) !void {
-            const msg = Message{
-                .tag = tag,
-                .command = .{
-                    .tcreate = .{
-                        .fid = fid,
-                        .name = name,
-                        .perm = perm,
-                        .mode = mode,
-                    }
-                }
-            };
+            const msg = Message{ .tag = tag, .command = .{ .tcreate = .{
+                .fid = fid,
+                .name = name,
+                .perm = perm,
+                .mode = mode,
+            } } };
             try msg.dump(self.writer);
         }
 
         pub fn rcreate(self: Self, tag: u16, qid: Qid, iounit: u32) !void {
-            const msg = Message{
-                .tag = tag,
-                .command = .{
-                    .rcreate = .{
-                        .qid = qid,
-                        .iounit = iounit,
-                    }
-                }
-            };
+            const msg = Message{ .tag = tag, .command = .{ .rcreate = .{
+                .qid = qid,
+                .iounit = iounit,
+            } } };
             try msg.dump(self.writer);
         }
 
         pub fn tread(self: Self, tag: u16, fid: u32, offset: u64, count: u32) !void {
-            const msg = Message{
-                .tag = tag,
-                .command = .{
-                    .tread = .{
-                        .fid = fid,
-                        .offset = offset,
-                        .count = count,
-                    }
-                }
-            };
+            const msg = Message{ .tag = tag, .command = .{ .tread = .{
+                .fid = fid,
+                .offset = offset,
+                .count = count,
+            } } };
             try msg.dump(self.writer);
         }
 
         pub fn rread(self: Self, tag: u16, data: []const u8) !void {
-            const msg = Message{
-                .tag = tag,
-                .command = .{
-                    .rread = .{
-                        .data = data,
-                    }
-                }
-            };
+            const msg = Message{ .tag = tag, .command = .{ .rread = .{
+                .data = data,
+            } } };
             try msg.dump(self.writer);
         }
 
         pub fn twrite(self: Self, tag: u16, fid: u32, offset: u64, data: []const u8) !void {
-            const msg = Message{
-                .tag = tag,
-                .command = .{
-                    .twrite = .{
-                        .fid = fid,
-                        .offset = offset,
-                        .data = data,
-                    }
-                }
-            };
+            const msg = Message{ .tag = tag, .command = .{ .twrite = .{
+                .fid = fid,
+                .offset = offset,
+                .data = data,
+            } } };
             try msg.dump(self.writer);
         }
 
         pub fn rwrite(self: Self, tag: u16, count: u32) !void {
-            const msg = Message{
-                .tag = tag,
-                .command = .{
-                    .rwrite = .{
-                        .count = count,
-                    }
-                }
-            };
+            const msg = Message{ .tag = tag, .command = .{ .rwrite = .{
+                .count = count,
+            } } };
             try msg.dump(self.writer);
         }
 
         pub fn tclunk(self: Self, tag: u16, fid: u32) !void {
-            const msg = Message{
-                .tag = tag,
-                .command = .{
-                    .tclunk = .{
-                        .fid = fid,
-                    }
-                }
-            };
+            const msg = Message{ .tag = tag, .command = .{ .tclunk = .{
+                .fid = fid,
+            } } };
             try msg.dump(self.writer);
         }
 
@@ -829,14 +722,9 @@ pub fn MessageSender(comptime Writer: type) type {
         }
 
         pub fn tremove(self: Self, tag: u16, fid: u32) !void {
-            const msg = Message{
-                .tag = tag,
-                .command = .{
-                    .tremove = .{
-                        .fid = fid,
-                    }
-                }
-            };
+            const msg = Message{ .tag = tag, .command = .{ .tremove = .{
+                .fid = fid,
+            } } };
             try msg.dump(self.writer);
         }
 
@@ -849,39 +737,24 @@ pub fn MessageSender(comptime Writer: type) type {
         }
 
         pub fn tstat(self: Self, tag: u16, fid: u32) !void {
-            const msg = Message{
-                .tag = tag,
-                .command = .{
-                    .tstat = .{
-                        .fid = fid,
-                    }
-                }
-            };
+            const msg = Message{ .tag = tag, .command = .{ .tstat = .{
+                .fid = fid,
+            } } };
             try msg.dump(self.writer);
         }
 
         pub fn rstat(self: Self, tag: u16, stat: Stat) !void {
-            const msg = Message{
-                .tag = tag,
-                .command = .{
-                    .rstat = .{
-                        .stat = stat,
-                    }
-                }
-            };
+            const msg = Message{ .tag = tag, .command = .{ .rstat = .{
+                .stat = stat,
+            } } };
             try msg.dump(self.writer);
         }
 
         pub fn twstat(self: Self, tag: u16, fid: u32, stat: Stat) !void {
-            const msg = Message{
-                .tag = tag,
-                .command = .{
-                    .twstat = .{
-                        .fid = fid,
-                        .stat = stat,
-                    }
-                }
-            };
+            const msg = Message{ .tag = tag, .command = .{ .twstat = .{
+                .fid = fid,
+                .stat = stat,
+            } } };
             try msg.dump(self.writer);
         }
 
@@ -925,36 +798,36 @@ pub fn MessageReceiver(comptime Reader: type) type {
             const comm: Message.Command = switch (command) {
                 .tversion => try Message.Command.Tversion.parse(arena.allocator(), internal_reader),
                 .rversion => try Message.Command.Rversion.parse(arena.allocator(), internal_reader),
-                .tauth    => try Message.Command.Tauth.parse(arena.allocator(), internal_reader),
-                .rauth    => try Message.Command.Rauth.parse(internal_reader),
-                .tattach  => try Message.Command.Tattach.parse(arena.allocator(), internal_reader),
-                .rattach  => try Message.Command.Rattach.parse(internal_reader),
-                .terror   => Message.Command.terror,
-                .rerror   => try Message.Command.Rerror.parse(arena.allocator(), internal_reader),
-                .tflush   => try Message.Command.Tflush.parse(internal_reader),
-                .rflush   => Message.Command.rflush,
-                .twalk    => try Message.Command.Twalk.parse(arena.allocator(), internal_reader),
-                .rwalk    => try Message.Command.Rwalk.parse(arena.allocator(), internal_reader),
-                .topen    => try Message.Command.Topen.parse(internal_reader),
-                .ropen    => try Message.Command.Ropen.parse(internal_reader),
-                .tcreate  => try Message.Command.Tcreate.parse(arena.allocator(), internal_reader),
-                .rcreate  => try Message.Command.Rcreate.parse(internal_reader),
-                .tread    => try Message.Command.Tread.parse(internal_reader),
-                .rread    => try Message.Command.Rread.parse(arena.allocator(), internal_reader),
-                .twrite   => try Message.Command.Twrite.parse(arena.allocator(), internal_reader),
-                .rwrite   => try Message.Command.Rwrite.parse(internal_reader),
-                .tclunk   => try Message.Command.Tclunk.parse(internal_reader),
-                .rclunk   => Message.Command.rclunk,
-                .tremove  => try Message.Command.Tremove.parse(internal_reader),
-                .rremove  => Message.Command.rremove,
-                .tstat    => try Message.Command.Tstat.parse(internal_reader),
-                .rstat    => try Message.Command.Rstat.parse(arena.allocator(), internal_reader),
-                .twstat   => try Message.Command.Twstat.parse(arena.allocator(), internal_reader),
-                .rwstat   => Message.Command.rwstat,
+                .tauth => try Message.Command.Tauth.parse(arena.allocator(), internal_reader),
+                .rauth => try Message.Command.Rauth.parse(internal_reader),
+                .tattach => try Message.Command.Tattach.parse(arena.allocator(), internal_reader),
+                .rattach => try Message.Command.Rattach.parse(internal_reader),
+                .terror => Message.Command.terror,
+                .rerror => try Message.Command.Rerror.parse(arena.allocator(), internal_reader),
+                .tflush => try Message.Command.Tflush.parse(internal_reader),
+                .rflush => Message.Command.rflush,
+                .twalk => try Message.Command.Twalk.parse(arena.allocator(), internal_reader),
+                .rwalk => try Message.Command.Rwalk.parse(arena.allocator(), internal_reader),
+                .topen => try Message.Command.Topen.parse(internal_reader),
+                .ropen => try Message.Command.Ropen.parse(internal_reader),
+                .tcreate => try Message.Command.Tcreate.parse(arena.allocator(), internal_reader),
+                .rcreate => try Message.Command.Rcreate.parse(internal_reader),
+                .tread => try Message.Command.Tread.parse(internal_reader),
+                .rread => try Message.Command.Rread.parse(arena.allocator(), internal_reader),
+                .twrite => try Message.Command.Twrite.parse(arena.allocator(), internal_reader),
+                .rwrite => try Message.Command.Rwrite.parse(internal_reader),
+                .tclunk => try Message.Command.Tclunk.parse(internal_reader),
+                .rclunk => Message.Command.rclunk,
+                .tremove => try Message.Command.Tremove.parse(internal_reader),
+                .rremove => Message.Command.rremove,
+                .tstat => try Message.Command.Tstat.parse(internal_reader),
+                .rstat => try Message.Command.Rstat.parse(arena.allocator(), internal_reader),
+                .twstat => try Message.Command.Twstat.parse(arena.allocator(), internal_reader),
+                .rwstat => Message.Command.rwstat,
             };
 
             if (comm == .rerror) {
-                std.log.debug("rerror: {s}", .{ comm.rerror.ename });
+                std.log.debug("rerror: {s}", .{comm.rerror.ename});
                 return error.Rerror;
             }
 
@@ -1059,7 +932,7 @@ pub const Message = struct {
         _ = options;
         _ = fmt;
         switch (self.command) {
-            inline else => |comm| try writer.print("Message{{ tag: {d}, command: {} }}", .{ self.tag, comm}),
+            inline else => |comm| try writer.print("Message{{ tag: {d}, command: {} }}", .{ self.tag, comm }),
         }
     }
 
@@ -1135,12 +1008,10 @@ pub const Message = struct {
             version: []const u8,
 
             pub fn parse(allocator: mem.Allocator, reader: anytype) !Command {
-                return .{
-                    .tversion = .{
-                        .msize = try reader.readIntLittle(u32),
-                        .version = try parseWireString(allocator, reader),
-                    }
-                };
+                return .{ .tversion = .{
+                    .msize = try reader.readIntLittle(u32),
+                    .version = try parseWireString(allocator, reader),
+                } };
             }
 
             pub fn dump(self: Tversion, writer: anytype) !void {
@@ -1154,12 +1025,10 @@ pub const Message = struct {
             version: []const u8,
 
             pub fn parse(allocator: mem.Allocator, reader: anytype) !Command {
-                return .{
-                    .rversion = .{
-                        .msize = try reader.readIntLittle(u32),
-                        .version = try parseWireString(allocator, reader),
-                    }
-                };
+                return .{ .rversion = .{
+                    .msize = try reader.readIntLittle(u32),
+                    .version = try parseWireString(allocator, reader),
+                } };
             }
 
             pub fn dump(self: Rversion, writer: anytype) !void {
@@ -1174,13 +1043,11 @@ pub const Message = struct {
             aname: []const u8,
 
             pub fn parse(allocator: mem.Allocator, reader: anytype) !Command {
-                return .{
-                    .tauth = .{
-                        .afid = try reader.readIntLittle(u32),
-                        .uname = try parseWireString(allocator, reader),
-                        .aname = try parseWireString(allocator, reader),
-                    }
-                };
+                return .{ .tauth = .{
+                    .afid = try reader.readIntLittle(u32),
+                    .uname = try parseWireString(allocator, reader),
+                    .aname = try parseWireString(allocator, reader),
+                } };
             }
 
             pub fn dump(self: Tauth, writer: anytype) !void {
@@ -1194,11 +1061,9 @@ pub const Message = struct {
             aqid: Qid,
 
             pub fn parse(reader: anytype) !Command {
-                return .{
-                    .rauth = .{
-                        .aqid = try Qid.parse(reader),
-                    }
-                };
+                return .{ .rauth = .{
+                    .aqid = try Qid.parse(reader),
+                } };
             }
 
             pub fn dump(self: Rauth, writer: anytype) !void {
@@ -1213,14 +1078,12 @@ pub const Message = struct {
             aname: []const u8,
 
             pub fn parse(allocator: mem.Allocator, reader: anytype) !Command {
-                return .{
-                    .tattach = .{
-                        .fid = try reader.readIntLittle(u32),
-                        .afid = try reader.readIntLittle(u32),
-                        .uname = try parseWireString(allocator, reader),
-                        .aname = try parseWireString(allocator, reader),
-                    }
-                };
+                return .{ .tattach = .{
+                    .fid = try reader.readIntLittle(u32),
+                    .afid = try reader.readIntLittle(u32),
+                    .uname = try parseWireString(allocator, reader),
+                    .aname = try parseWireString(allocator, reader),
+                } };
             }
 
             pub fn dump(self: Tattach, writer: anytype) !void {
@@ -1235,11 +1098,9 @@ pub const Message = struct {
             qid: Qid,
 
             pub fn parse(reader: anytype) !Command {
-                return .{
-                    .rattach = .{
-                        .qid = try Qid.parse(reader),
-                    }
-                };
+                return .{ .rattach = .{
+                    .qid = try Qid.parse(reader),
+                } };
             }
 
             pub fn dump(self: Rattach, writer: anytype) !void {
@@ -1251,11 +1112,9 @@ pub const Message = struct {
             ename: []const u8,
 
             pub fn parse(allocator: mem.Allocator, reader: anytype) !Command {
-                return .{
-                    .rerror = .{
-                        .ename = try parseWireString(allocator, reader),
-                    }
-                };
+                return .{ .rerror = .{
+                    .ename = try parseWireString(allocator, reader),
+                } };
             }
 
             pub fn dump(self: Rerror, writer: anytype) !void {
@@ -1267,11 +1126,9 @@ pub const Message = struct {
             oldtag: u16,
 
             pub fn parse(reader: anytype) !Command {
-                return .{
-                    .tflush = .{
-                        .oldtag = try reader.readIntLittle(u16),
-                    }
-                };
+                return .{ .tflush = .{
+                    .oldtag = try reader.readIntLittle(u16),
+                } };
             }
 
             pub fn dump(self: Tflush, writer: anytype) !void {
@@ -1295,13 +1152,11 @@ pub const Message = struct {
                     try wnames.append(name);
                 }
 
-                return .{
-                    .twalk = .{
-                        .fid = fid,
-                        .newfid = newfid,
-                        .wname = try wnames.toOwnedSlice(),
-                    }
-                };
+                return .{ .twalk = .{
+                    .fid = fid,
+                    .newfid = newfid,
+                    .wname = try wnames.toOwnedSlice(),
+                } };
             }
 
             pub fn dump(self: Twalk, writer: anytype) !void {
@@ -1326,11 +1181,9 @@ pub const Message = struct {
                     try qids.append(qid);
                 }
 
-                return .{
-                    .rwalk = .{
-                        .wqid = try qids.toOwnedSlice(),
-                    }
-                };
+                return .{ .rwalk = .{
+                    .wqid = try qids.toOwnedSlice(),
+                } };
             }
 
             pub fn dump(self: Rwalk, writer: anytype) !void {
@@ -1342,19 +1195,17 @@ pub const Message = struct {
         };
 
         pub const Topen = struct {
-            fid:  u32,
+            fid: u32,
             mode: OpenMode,
 
             pub fn parse(reader: anytype) !Command {
                 const fid = try reader.readIntLittle(u32);
                 const open_mode = @bitCast(OpenMode, try reader.readByte());
 
-                return .{
-                    .topen = .{
-                        .fid = fid,
-                        .mode = open_mode,
-                    }
-                };
+                return .{ .topen = .{
+                    .fid = fid,
+                    .mode = open_mode,
+                } };
             }
 
             pub fn dump(self: Topen, writer: anytype) !void {
@@ -1368,12 +1219,10 @@ pub const Message = struct {
             iounit: u32,
 
             pub fn parse(reader: anytype) !Command {
-                return .{
-                    .ropen = .{
-                        .qid = try Qid.parse(reader),
-                        .iounit = try reader.readIntLittle(u32),
-                    }
-                };
+                return .{ .ropen = .{
+                    .qid = try Qid.parse(reader),
+                    .iounit = try reader.readIntLittle(u32),
+                } };
             }
 
             pub fn dump(self: Ropen, writer: anytype) !void {
@@ -1389,14 +1238,12 @@ pub const Message = struct {
             mode: OpenMode,
 
             pub fn parse(allocator: mem.Allocator, reader: anytype) !Command {
-                return .{
-                    .tcreate = .{
-                        .fid = try reader.readIntLittle(u32),
-                        .name = try parseWireString(allocator, reader),
-                        .perm = @bitCast(DirMode, try reader.readIntLittle(u32)),
-                        .mode = @bitCast(OpenMode, try reader.readByte()),
-                    }
-                };
+                return .{ .tcreate = .{
+                    .fid = try reader.readIntLittle(u32),
+                    .name = try parseWireString(allocator, reader),
+                    .perm = @bitCast(DirMode, try reader.readIntLittle(u32)),
+                    .mode = @bitCast(OpenMode, try reader.readByte()),
+                } };
             }
 
             pub fn dump(self: Tcreate, writer: anytype) !void {
@@ -1412,12 +1259,10 @@ pub const Message = struct {
             iounit: u32,
 
             pub fn parse(reader: anytype) !Command {
-                return .{
-                    .rcreate = .{
-                        .qid = try Qid.parse(reader),
-                        .iounit = try reader.readIntLittle(u32),
-                    }
-                };
+                return .{ .rcreate = .{
+                    .qid = try Qid.parse(reader),
+                    .iounit = try reader.readIntLittle(u32),
+                } };
             }
 
             pub fn dump(self: Rcreate, writer: anytype) !void {
@@ -1432,13 +1277,11 @@ pub const Message = struct {
             count: u32,
 
             pub fn parse(reader: anytype) !Command {
-                return .{
-                    .tread = .{
-                        .fid = try reader.readIntLittle(u32),
-                        .offset = try reader.readIntLittle(u64),
-                        .count = try reader.readIntLittle(u32),
-                    }
-                };
+                return .{ .tread = .{
+                    .fid = try reader.readIntLittle(u32),
+                    .offset = try reader.readIntLittle(u64),
+                    .count = try reader.readIntLittle(u32),
+                } };
             }
 
             pub fn dump(self: Tread, writer: anytype) !void {
@@ -1462,11 +1305,9 @@ pub const Message = struct {
                     return error.IncorrectCount;
                 }
 
-                return .{
-                    .rread = .{
-                        .data = data,
-                    }
-                };
+                return .{ .rread = .{
+                    .data = data,
+                } };
             }
 
             pub fn dump(self: Rread, writer: anytype) !void {
@@ -1493,13 +1334,11 @@ pub const Message = struct {
                     return error.IncorrectCount;
                 }
 
-                return .{
-                    .twrite = .{
-                        .fid = fid,
-                        .offset = offset,
-                        .data = data,
-                    }
-                };
+                return .{ .twrite = .{
+                    .fid = fid,
+                    .offset = offset,
+                    .data = data,
+                } };
             }
 
             pub fn dump(self: Twrite, writer: anytype) !void {
@@ -1518,11 +1357,9 @@ pub const Message = struct {
             count: u32,
 
             pub fn parse(reader: anytype) !Command {
-                return .{
-                    .rwrite = .{
-                        .count = try reader.readIntLittle(u32),
-                    }
-                };
+                return .{ .rwrite = .{
+                    .count = try reader.readIntLittle(u32),
+                } };
             }
 
             pub fn dump(self: Rwrite, writer: anytype) !void {
@@ -1534,11 +1371,9 @@ pub const Message = struct {
             fid: u32,
 
             pub fn parse(reader: anytype) !Command {
-                return .{
-                    .tclunk = .{
-                        .fid = try reader.readIntLittle(u32),
-                    }
-                };
+                return .{ .tclunk = .{
+                    .fid = try reader.readIntLittle(u32),
+                } };
             }
 
             pub fn dump(self: Tclunk, writer: anytype) !void {
@@ -1550,11 +1385,9 @@ pub const Message = struct {
             fid: u32,
 
             pub fn parse(reader: anytype) !Command {
-                return .{
-                    .tremove = .{
-                        .fid = try reader.readIntLittle(u32),
-                    }
-                };
+                return .{ .tremove = .{
+                    .fid = try reader.readIntLittle(u32),
+                } };
             }
 
             pub fn dump(self: Tremove, writer: anytype) !void {
@@ -1566,11 +1399,9 @@ pub const Message = struct {
             fid: u32,
 
             pub fn parse(reader: anytype) !Command {
-                return .{
-                    .tstat = .{
-                        .fid = try reader.readIntLittle(u32),
-                    }
-                };
+                return .{ .tstat = .{
+                    .fid = try reader.readIntLittle(u32),
+                } };
             }
 
             pub fn dump(self: Tstat, writer: anytype) !void {
@@ -1582,11 +1413,9 @@ pub const Message = struct {
             stat: Stat,
 
             pub fn parse(allocator: mem.Allocator, reader: anytype) !Command {
-                return .{
-                    .rstat = .{
-                        .stat = try Stat.parse(allocator, reader),
-                    }
-                };
+                return .{ .rstat = .{
+                    .stat = try Stat.parse(allocator, reader),
+                } };
             }
 
             pub fn dump(self: Rstat, writer: anytype) !void {
@@ -1599,12 +1428,10 @@ pub const Message = struct {
             stat: Stat,
 
             pub fn parse(allocator: mem.Allocator, reader: anytype) !Command {
-                return .{
-                    .twstat = .{
-                        .fid = try reader.readIntLittle(u32),
-                        .stat = try Stat.parse(allocator, reader),
-                    }
-                };
+                return .{ .twstat = .{
+                    .fid = try reader.readIntLittle(u32),
+                    .stat = try Stat.parse(allocator, reader),
+                } };
             }
 
             pub fn dump(self: Twstat, writer: anytype) !void {
@@ -1666,7 +1493,7 @@ const Qid = struct {
         /// type bit for authentication file
         auth = 0x08,
         /// plain file
-        file = 0x00
+        file = 0x00,
     };
 };
 
@@ -1691,31 +1518,31 @@ const OpenMode = packed struct(u8) {
         /// read and write
         rdwr = 2,
         /// read, write, execute
-        exec = 3
+        exec = 3,
     };
 
     const Values = enum(u16) {
-        read = 0,         // open for read
-        write = 1,        // write
-        rdwr = 2,         // read and write
-        exec = 3,         // execute, == read but check execute permission
-        trunc = 16,       // or'ed in (except for exec), truncate file first
-        cexec = 32,       // or'ed in, close on exec
-        rclose = 64,      // or'ed in, remove on close
-        direct = 128,     // or'ed in, direct access
-        nonblock = 256,   // or'ed in, non-blocking call
-        excl = 0x1000,    // or'ed in, exclusive use (create only)
-        lock = 0x2000,    // or'ed in, lock after opening
-        append = 0x4000,  // or'ed in, append only
+        read = 0, // open for read
+        write = 1, // write
+        rdwr = 2, // read and write
+        exec = 3, // execute, == read but check execute permission
+        trunc = 16, // or'ed in (except for exec), truncate file first
+        cexec = 32, // or'ed in, close on exec
+        rclose = 64, // or'ed in, remove on close
+        direct = 128, // or'ed in, direct access
+        nonblock = 256, // or'ed in, non-blocking call
+        excl = 0x1000, // or'ed in, exclusive use (create only)
+        lock = 0x2000, // or'ed in, lock after opening
+        append = 0x4000, // or'ed in, append only
     };
 };
 
 test "open mode is correct" {
-    try testing.expectEqual(@enumToInt(OpenMode.Values.read), @bitCast(u8, OpenMode{ .perm = .read  }));
-    try testing.expectEqual(@enumToInt(OpenMode.Values.write), @bitCast(u8, OpenMode{ .perm = .write  }));
-    try testing.expectEqual(@enumToInt(OpenMode.Values.rdwr), @bitCast(u8, OpenMode{ .perm = .rdwr  }));
-    try testing.expectEqual(@enumToInt(OpenMode.Values.exec), @bitCast(u8, OpenMode{ .perm = .exec  }));
-    try testing.expectEqual(@enumToInt(OpenMode.Values.read), @bitCast(u8, OpenMode{ }));
+    try testing.expectEqual(@enumToInt(OpenMode.Values.read), @bitCast(u8, OpenMode{ .perm = .read }));
+    try testing.expectEqual(@enumToInt(OpenMode.Values.write), @bitCast(u8, OpenMode{ .perm = .write }));
+    try testing.expectEqual(@enumToInt(OpenMode.Values.rdwr), @bitCast(u8, OpenMode{ .perm = .rdwr }));
+    try testing.expectEqual(@enumToInt(OpenMode.Values.exec), @bitCast(u8, OpenMode{ .perm = .exec }));
+    try testing.expectEqual(@enumToInt(OpenMode.Values.read), @bitCast(u8, OpenMode{}));
 
     try testing.expectEqual(@enumToInt(OpenMode.Values.trunc), @bitCast(u8, OpenMode{ .trunc = true }));
     try testing.expectEqual(@enumToInt(OpenMode.Values.cexec), @bitCast(u8, OpenMode{ .cexec = true }));
@@ -1855,8 +1682,7 @@ pub const Stat = struct {
     pub fn format(self: Stat, comptime fmt: []const u8, options: std.fmt.FormatOptions, writer: anytype) !void {
         _ = fmt;
         _ = options;
-        try writer.print("Stat{{ type: {d}, dev: {d}, qid: {any}, mode: {any}, length: {d}, name: {s}, uid: {s}, gid: {s}, muid: {s} }}",
-                         .{ self.stype, self.dev, self.qid, self.mode, self.length, self.name, self.uid, self.gid, self.muid });
+        try writer.print("Stat{{ type: {d}, dev: {d}, qid: {any}, mode: {any}, length: {d}, name: {s}, uid: {s}, gid: {s}, muid: {s} }}", .{ self.stype, self.dev, self.qid, self.mode, self.length, self.name, self.uid, self.gid, self.muid });
     }
 
     pub fn deinit(self: Stat) void {
